@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Configuration files
+*.config.js
+*.config.mjs
+
+# Test coverage
+coverage/
+
+# Environment files
+.env
+.env.*
+
+# Azure Functions
+local.settings.json
+
+# Logs
+*.log
+npm-debug.log*
