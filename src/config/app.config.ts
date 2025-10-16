@@ -41,7 +41,7 @@ const env = EnvSchema.parse(process.env);
 
 const loginUrl = env.SF_ENV === 'sandbox' ? 'https://test.salesforce.com' : 'https://login.salesforce.com';
 
-export const cfg = {
+export const config = {
   nodeEnv: env.NODE_ENV,
 
   salesforce: {
@@ -66,4 +66,4 @@ export const cfg = {
   },
 } as const;
 
-export type AppConfig = typeof cfg;
+export type AppConfig = typeof config;
