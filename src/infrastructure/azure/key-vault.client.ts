@@ -1,7 +1,8 @@
-// src/azure/key-value-client.ts
+// src/infrastructure/azure/key-vault.client.ts
 import { SecretClient } from '@azure/keyvault-secrets';
 import { DefaultAzureCredential, ClientSecretCredential, TokenCredential } from '@azure/identity';
-import { config } from '../config/app.config';
+import { config } from '../../config/app.config';
+import { KeyVaultError, ValidationError } from '../../utils/errors';
 
 /**
  * Builds the appropriate Azure credential based on configuration.
@@ -26,24 +27,27 @@ export const secretClient = new SecretClient(config.keyVault.url, credential);
  * Retrieves the latest version of a secret from Azure Key Vault.
  * @param secretName - The name of the secret to retrieve
  * @returns The secret value as a string
- * @throws Error if the secret is not found, empty, or retrieval fails
+ * @throws ValidationError if the secret name is empty
+ * @throws KeyVaultError if the secret is not found, empty, or retrieval fails
  */
 export async function getSecretValue(secretName: string): Promise<string> {
   if (!secretName.trim()) {
-    throw new Error('Secret name cannot be empty');
+    throw new ValidationError('Secret name cannot be empty');
   }
 
   try {
     const resp = await secretClient.getSecret(secretName);
     if (!resp.value) {
-      throw new Error(`Key Vault: secret "${secretName}" exists but has no value`);
+      throw new KeyVaultError(`Key Vault: secret "${secretName}" exists but has no value`);
     }
     return resp.value;
   } catch (error) {
-    if (error instanceof Error) {
-      // Re-throw with additional context if it's already an Error
-      throw new Error(`Failed to retrieve secret "${secretName}" from Key Vault: ${error.message}`);
+    if (error instanceof ValidationError || error instanceof KeyVaultError) {
+      throw error;
     }
-    throw new Error(`Failed to retrieve secret "${secretName}" from Key Vault`);
+    if (error instanceof Error) {
+      throw new KeyVaultError(`Failed to retrieve secret "${secretName}" from Key Vault: ${error.message}`);
+    }
+    throw new KeyVaultError(`Failed to retrieve secret "${secretName}" from Key Vault`);
   }
 }

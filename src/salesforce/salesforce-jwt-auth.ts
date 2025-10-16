@@ -2,23 +2,9 @@ import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/app.config';
-import { getSalesforcePrivateKeyPem } from '../azure/salesforce-secret';
-
-interface JwtPayload {
-  iss: string; // Client ID
-  sub: string; // Username
-  aud: string; // Login URL
-  exp: number; // Expiration time (in seconds since epoch)
-}
-
-interface SalesforceAuthResponse {
-  access_token: string;
-  instance_url: string;
-  id: string;
-  token_type: string;
-  issued_at: string;
-  signature: string;
-}
+import { getSalesforcePrivateKeyPem } from '../infrastructure/azure/secrets.service';
+import type { SalesforceJwtPayload, SalesforceAuthResponse } from '../types';
+import { AuthenticationError, SalesforceError } from '../utils/errors';
 
 export class SalesforceJwtAuth {
   private axiosInstance: AxiosInstance;
@@ -38,7 +24,7 @@ export class SalesforceJwtAuth {
   private async createJwt(): Promise<string> {
     const privateKeyPem = await getSalesforcePrivateKeyPem();
     const nowInSeconds = Math.floor(Date.now() / 1000);
-    const payload: JwtPayload = {
+    const payload: SalesforceJwtPayload = {
       iss: config.salesforce.clientId,
       sub: config.salesforce.username,
       aud: config.salesforce.loginUrl,
@@ -60,27 +46,27 @@ export class SalesforceJwtAuth {
       this.instanceUrl = response.data.instance_url;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        throw new Error(
-          `Salesforce authentication failed: ${error.response.status} ${error.response.statusText} - ${JSON.stringify(
-            error.response.data
-          )}`
+        throw new SalesforceError(
+          `Salesforce authentication failed: ${error.response.status} ${error.response.statusText}`,
+          error.response.status,
+          error.response.data
         );
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Salesforce authentication failed: ${errorMessage}`);
+      throw new AuthenticationError(`Salesforce authentication failed: ${errorMessage}`);
     }
   }
 
   public getAccessToken(): string {
     if (!this.accessToken) {
-      throw new Error('Not authenticated. Call authenticate() first.');
+      throw new AuthenticationError('Not authenticated. Call authenticate() first.');
     }
     return this.accessToken;
   }
 
   public getInstanceUrl(): string {
     if (!this.instanceUrl) {
-      throw new Error('Not authenticated. Call authenticate() first.');
+      throw new AuthenticationError('Not authenticated. Call authenticate() first.');
     }
     return this.instanceUrl;
   }
